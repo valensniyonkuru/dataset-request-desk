@@ -1,0 +1,474 @@
+/* One stylesheet for the whole app. Colours are variables, so dark mode only swaps them. */
+
+:root {
+  color-scheme: light;
+  --bg: #f7f7f5;
+  --surface: #ffffff;
+  --text: #1d1d1f;
+  --muted: #5c5c66;
+  --border: #d6d6dc;
+  --accent: #2456c7;
+  --accent-text: #ffffff;
+  --focus: #f0a400;
+  --error-bg: #fdecec;
+  --error-text: #8a1c1c;
+  --success-bg: #e8f6ec;
+  --success-text: #1d6131;
+  --info-bg: #e9f0fd;
+  --info-text: #1c3f8a;
+  --bar: #2456c7;
+
+  /* Status badges: each also shows its name in text. */
+  --submitted-bg: #e8e8ee;
+  --submitted-text: #3a3a46;
+  --in_progress-bg: #e3edfd;
+  --in_progress-text: #1c3f8a;
+  --delivered-bg: #fff2d6;
+  --delivered-text: #7a4a00;
+  --accepted-bg: #e1f4e6;
+  --accepted-text: #1d6131;
+  --rejected-bg: #fde4e4;
+  --rejected-text: #8a1c1c;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: #17181c;
+    --surface: #212228;
+    --text: #ececf1;
+    --muted: #a6a6b3;
+    --border: #3a3b44;
+    --accent: #7aa2ff;
+    --accent-text: #0e1220;
+    --error-bg: #3d1f22;
+    --error-text: #ffb4b4;
+    --success-bg: #1d3424;
+    --success-text: #a9e3b8;
+    --info-bg: #1d2a44;
+    --info-text: #b8cdff;
+    --bar: #7aa2ff;
+    --submitted-bg: #33343d;
+    --submitted-text: #d9d9e3;
+    --in_progress-bg: #1d2a44;
+    --in_progress-text: #b8cdff;
+    --delivered-bg: #3d3018;
+    --delivered-text: #ffd98a;
+    --accepted-bg: #1d3424;
+    --accepted-text: #a9e3b8;
+    --rejected-bg: #3d1f22;
+    --rejected-text: #ffb4b4;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+main {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 4rem;
+}
+
+h1 {
+  font-size: 1.6rem;
+  margin: 0.5rem 0 1rem;
+}
+
+h2 {
+  font-size: 1.2rem;
+  margin: 2rem 0 0.75rem;
+}
+
+a {
+  color: var(--accent);
+}
+
+/* Keyboard users must always see where they are. */
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Header and navigation */
+
+.site-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1.25rem;
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.site-name {
+  font-weight: 700;
+}
+
+.site-header nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  flex: 1;
+}
+
+.site-header nav a {
+  text-decoration: none;
+  padding: 0.25rem 0;
+}
+
+.site-header nav a[aria-current="page"] {
+  font-weight: 700;
+  border-bottom: 2px solid var(--accent);
+}
+
+.who {
+  color: var(--muted);
+}
+
+.role {
+  font-size: 0.9em;
+}
+
+/* Buttons and form controls */
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  padding: 0.4rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  cursor: pointer;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+input,
+select,
+textarea {
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.form {
+  display: grid;
+  gap: 0.9rem;
+  max-width: 28rem;
+}
+
+.form label,
+.filters label {
+  display: grid;
+  gap: 0.25rem;
+  font-weight: 600;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.inline-form {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+/* Messages */
+
+.message {
+  padding: 0.6rem 0.8rem;
+  border-radius: 6px;
+}
+
+.message-error {
+  background: var(--error-bg);
+  color: var(--error-text);
+}
+
+.message-success {
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.message-info {
+  background: var(--info-bg);
+  color: var(--info-text);
+}
+
+.note,
+.hint-text {
+  color: var(--muted);
+}
+
+/* Status badges */
+
+.badge {
+  display: inline-block;
+  padding: 0.1rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+.badge-submitted { background: var(--submitted-bg); color: var(--submitted-text); }
+.badge-in_progress { background: var(--in_progress-bg); color: var(--in_progress-text); }
+.badge-delivered { background: var(--delivered-bg); color: var(--delivered-text); }
+.badge-accepted { background: var(--accepted-bg); color: var(--accepted-text); }
+.badge-rejected { background: var(--rejected-bg); color: var(--rejected-text); }
+
+/* Tables: wide ones scroll inside their own box on small screens. */
+
+.table-wrap {
+  overflow-x: auto;
+  margin-bottom: 0.75rem;
+}
+
+.table-tall {
+  max-height: 32rem;
+  overflow-y: auto;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  background: var(--surface);
+}
+
+th,
+td {
+  padding: 0.45rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  white-space: nowrap;
+}
+
+thead th {
+  background: var(--bg);
+  position: sticky;
+  top: 0;
+}
+
+caption {
+  text-align: left;
+  font-weight: 700;
+  padding: 0.4rem 0;
+}
+
+table.numbers td {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.clickable-rows tbody tr {
+  cursor: pointer;
+}
+
+.clickable-rows tbody tr:hover {
+  background: var(--bg);
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* Request detail */
+
+.details {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.35rem 1.25rem;
+}
+
+.details dt {
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.details dd {
+  margin: 0;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin: 1.25rem 0;
+}
+
+.actions .message {
+  flex-basis: 100%;
+}
+
+.action-with-hint,
+.confirm {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.timeline {
+  padding-left: 1.25rem;
+}
+
+.timeline li {
+  margin-bottom: 0.35rem;
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.25rem 1rem 1rem;
+  margin-top: 2rem;
+}
+
+.assign-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  margin-top: 0.75rem;
+}
+
+/* Login */
+
+.login {
+  max-width: 40rem;
+}
+
+.hint {
+  margin-top: 2rem;
+  padding: 0.25rem 1rem 1rem;
+  background: var(--info-bg);
+  border-radius: 8px;
+}
+
+.hint table {
+  background: transparent;
+}
+
+/* Imports */
+
+.headline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  list-style: none;
+  padding: 0;
+}
+
+.headline strong {
+  font-size: 1.4rem;
+}
+
+.breakdowns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+
+.breakdowns table {
+  width: auto;
+}
+
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+/* Analytics: horizontal bars drawn with plain elements. */
+
+.bars {
+  padding: 0;
+  list-style: none;
+  max-width: 40rem;
+}
+
+.bars li {
+  display: grid;
+  grid-template-columns: 10rem 1fr 4rem;
+  gap: 0.75rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.bar-track {
+  background: var(--border);
+  border-radius: 4px;
+  height: 0.9rem;
+}
+
+.bar {
+  display: block;
+  height: 100%;
+  background: var(--bar);
+  border-radius: 4px;
+}
+
+.bar-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.page-loading {
+  padding: 2rem;
+}
+
+@media (max-width: 40rem) {
+  .bars li {
+    grid-template-columns: 7rem 1fr 3rem;
+  }
+
+  .details {
+    grid-template-columns: 1fr;
+  }
+}
