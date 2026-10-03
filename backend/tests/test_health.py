@@ -9,7 +9,7 @@ client = TestClient(app)
 
 
 def test_health_ok():
-    # Uses the real database from DATABASE_URL.
+    # Uses the test database set up in conftest.py.
     response = client.get("/health")
 
     assert response.status_code == 200
