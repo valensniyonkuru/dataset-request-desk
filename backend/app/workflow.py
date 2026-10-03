@@ -14,6 +14,11 @@ Status = Literal["submitted", "in_progress", "delivered", "accepted", "rejected"
 
 INITIAL_STATUS: Status = "submitted"
 
+# Episodes can only be assigned to or removed from a request in this status.
+# Before it, work has not started; after it, the delivery is with the client and
+# must not change under their eyes (and the delivery gate could be bypassed).
+ASSIGNMENTS_OPEN_STATUS: Status = "in_progress"
+
 # (from_status, to_status) -> roles allowed to make that change.
 # Accepting or rejecting a delivery is the client's decision, so admin is not listed there.
 TRANSITIONS: dict[tuple[str, str], frozenset[str]] = {
