@@ -33,7 +33,8 @@ jobs:
     env:
       # tests/conftest.py drops, recreates and migrates this database on every run.
       TEST_DATABASE_URL: postgresql+psycopg://desk:desk@localhost:5432/desk_test
-      SECRET_KEY: ci-only-secret
+      # At least 32 bytes: PyJWT warns about shorter HS256 keys.
+      SECRET_KEY: ci-only-secret-at-least-32-bytes-long
       ENV: test
       # In CI the seed files are in the checkout, not at /app/seed as in the image.
       SEED_DIR: ${{ github.workspace }}/seed

@@ -29,7 +29,13 @@ TEST_DATABASE_URL = _test_database_url()
 # imports "app", because app.config reads DATABASE_URL when it is imported.
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 
-from app.db import engine  # noqa: E402  (must come after the line above)
+from fastapi.testclient import TestClient  # noqa: E402
+
+from app.auth import create_access_token  # noqa: E402  (app imports must come after the line above)
+from app.db import engine, get_db  # noqa: E402
+from app.main import app  # noqa: E402
+from app.models import User  # noqa: E402
+from app.security import hash_password  # noqa: E402
 
 ALEMBIC_CONFIG = Config(str(Path(__file__).resolve().parent.parent / "alembic.ini"))
 
@@ -78,3 +84,41 @@ def db_session():
     session.close()
     transaction.rollback()
     connection.close()
+
+
+@pytest.fixture
+def client(db_session):
+    """An HTTP test client whose requests use the test's rolled-back session."""
+    app.dependency_overrides[get_db] = lambda: db_session
+    yield TestClient(app)
+    app.dependency_overrides.pop(get_db, None)
+
+
+@pytest.fixture
+def create_user(db_session):
+    """Factory: create_user("a@example.com", role="admin", password="...") -> User."""
+
+    def _create_user(email: str, role: str = "client", password: str = "test-password", is_active: bool = True) -> User:
+        user = User(
+            email=email,
+            name=email.split("@")[0],
+            role=role,
+            organisation="Test Org" if role == "client" else None,
+            password_hash=hash_password(password),
+            is_active=is_active,
+        )
+        db_session.add(user)
+        db_session.flush()
+        return user
+
+    return _create_user
+
+
+@pytest.fixture
+def auth_headers():
+    """auth_headers(user) -> an "Authorization: Bearer <token>" header for that user."""
+
+    def _auth_headers(user: User) -> dict[str, str]:
+        return {"Authorization": f"Bearer {create_access_token(user)}"}
+
+    return _auth_headers
