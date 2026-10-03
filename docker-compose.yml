@@ -1,0 +1,40 @@
+# Local development: docker compose up --build
+# The credentials below are for local use only. Production reads secrets
+# from an env file (see deploy/docker-compose.prod.yml and .env.example).
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: desk
+      POSTGRES_PASSWORD: desk
+      POSTGRES_DB: desk
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U desk -d desk"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://desk:desk@db:5432/desk
+      SECRET_KEY: local-dev-secret-not-for-production
+      ENV: development
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
+  web:
+    build: ./frontend
+    # nginx looks up the "api" hostname at startup, so api must exist first.
+    depends_on:
+      - api
+    ports:
+      - "8082:80"
+
+volumes:
+  db_data:
