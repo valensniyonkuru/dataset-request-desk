@@ -63,6 +63,11 @@ def test_every_field_and_the_assigned_request_are_returned(client, auth_headers,
         ({"task_name": "pick cup", "quality": "good"}, {"cup_good_arm1"}),
         ({"task_name": "fold towel", "robot_id": "arm-02", "assigned": "false"}, {"towel_good_arm2"}),
         ({"quality": "good", "assigned": "false"}, {"towel_good_arm2", "towel_good_mobile"}),
+        # quality given more than once: any of the values
+        ({"quality": ["good", "usable"]}, {"cup_good_arm1", "cup_usable_arm2", "towel_good_arm2", "towel_good_mobile"}),
+        ({"quality": ["usable", "bad"]}, {"cup_usable_arm2", "cup_bad_arm1"}),
+        ({"quality": ["good", "usable"], "task_name": "pick cup", "assigned": "false"}, {"cup_usable_arm2"}),
+        ({"quality": ["good", "usable"], "assigned": "true"}, {"cup_good_arm1"}),
         ({"task_name": "no such task"}, set()),
     ],
 )
@@ -116,7 +121,15 @@ def test_pagination_returns_the_total(client, create_user, create_episode, auth_
 
 
 @pytest.mark.parametrize(
-    "params", [{"quality": "excellent"}, {"assigned": "maybe"}, {"limit": 0}, {"limit": 201}, {"offset": -1}]
+    "params",
+    [
+        {"quality": "excellent"},
+        {"quality": ["excellent", "good"]},  # one invalid value among valid ones (the old code kept only the last)
+        {"assigned": "maybe"},
+        {"limit": 0},
+        {"limit": 201},
+        {"offset": -1},
+    ],
 )
 def test_invalid_parameters_give_422(client, create_user, auth_headers, params):
     operator = create_user("ops@example.com", role="operator")
@@ -140,3 +153,25 @@ def test_clients_cannot_list_episodes(client, create_user, auth_headers):
 
 def test_listing_episodes_requires_login(client):
     assert client.get("/episodes").status_code == 401
+
+
+def test_several_qualities_keep_total_and_pagination_right(client, create_user, create_episode, auth_headers):
+    operator = create_user("ops@example.com", role="operator")
+    for n, quality in enumerate(["good", "bad", "usable", "good", "bad", "usable", "good"]):
+        create_episode(quality=quality, recorded_at=BASE_TIME - timedelta(minutes=n))  # newest first
+    headers = auth_headers(operator)
+
+    first = list_episodes(client, headers, quality=["good", "usable"], limit=3, offset=0)
+    second = list_episodes(client, headers, quality=["good", "usable"], limit=3, offset=3)
+
+    assert first["total"] == second["total"] == 5  # the two bad ones are not counted
+    assert [item["quality"] for item in first["items"]] == ["good", "usable", "good"]
+    assert [item["quality"] for item in second["items"]] == ["usable", "good"]
+
+
+def test_the_docs_describe_quality_as_repeatable(client):
+    parameters = client.get("/openapi.json").json()["paths"]["/episodes"]["get"]["parameters"]
+    quality = next(parameter for parameter in parameters if parameter["name"] == "quality")
+
+    assert quality["schema"]["type"] == "array"
+    assert quality["examples"]["good or usable"]["value"] == ["good", "usable"]
