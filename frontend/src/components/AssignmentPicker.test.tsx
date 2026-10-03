@@ -74,7 +74,22 @@ describe("assignment picker", () => {
     await screen.findByLabelText("Select EP-1");
 
     expect(api.listEpisodes).toHaveBeenCalledWith(
-      expect.objectContaining({ task_name: "pick cup", quality: "good", assigned: false }),
+      expect.objectContaining({ task_name: "pick cup", quality: ["good"], assigned: false }),
+    );
+  });
+
+  it('asks for good and usable episodes together for "Good or usable"', async () => {
+    renderPicker();
+    const user = userEvent.setup();
+    await screen.findByLabelText("Select EP-1");
+
+    await user.selectOptions(screen.getByLabelText("Quality"), "Good or usable");
+    await user.click(screen.getByRole("button", { name: "Show episodes" }));
+
+    await waitFor(() =>
+      expect(api.listEpisodes).toHaveBeenLastCalledWith(
+        expect.objectContaining({ quality: ["good", "usable"], assigned: false }),
+      ),
     );
   });
 

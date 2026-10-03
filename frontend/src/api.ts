@@ -245,11 +245,13 @@ async function request<T>(path: string, options: Options = {}): Promise<T> {
   return (await response.json()) as T;
 }
 
-/** "?a=1&b=x" from the values that are set. */
-function query(params: Record<string, string | number | boolean | undefined>): string {
+/** "?a=1&b=x" from the values that are set. A list repeats its key: quality=good&quality=usable. */
+function query(params: Record<string, string | number | boolean | string[] | undefined>): string {
   const search = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
-    if (value !== undefined && value !== "") {
+    if (Array.isArray(value)) {
+      value.forEach((item) => search.append(key, item));
+    } else if (value !== undefined && value !== "") {
       search.set(key, String(value));
     }
   }
@@ -272,7 +274,14 @@ export const api = {
 
   requestEpisodes: (id: number, limit: number, offset: number) =>
     request<Page<AssignedEpisode>>(`/requests/${id}/episodes${query({ limit, offset })}`),
-  listEpisodes: (filters: { task_name?: string; quality?: Quality; assigned?: boolean; limit: number; offset: number }) =>
+  // quality: any of these (sent as quality=good&quality=usable); leave out for all qualities.
+  listEpisodes: (filters: {
+    task_name?: string;
+    quality?: Quality[];
+    assigned?: boolean;
+    limit: number;
+    offset: number;
+  }) =>
     request<Page<EpisodeListItem>>(`/episodes${query(filters)}`),
   assign: (id: number, episodeIds: string[]) =>
     request<AssignResult>(`/requests/${id}/assignments`, { method: "POST", json: { episode_ids: episodeIds } }),

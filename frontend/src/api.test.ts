@@ -44,6 +44,15 @@ describe("request", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/users", expect.objectContaining({ credentials: "same-origin" }));
   });
 
+  it("sends a list filter as a repeated parameter", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, { items: [], total: 0, limit: 20, offset: 0 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await api.listEpisodes({ quality: ["good", "usable"], assigned: false, limit: 20, offset: 0 });
+
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/episodes?quality=good&quality=usable&assigned=false&limit=20&offset=0");
+  });
+
   it("a 401 from a normal call ends the session", async () => {
     const sessionExpired = vi.fn();
     setSessionExpiredHandler(sessionExpired);

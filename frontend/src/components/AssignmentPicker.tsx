@@ -1,5 +1,5 @@
 import { type FormEvent, useState } from "react";
-import { api, type EpisodeListItem, type RequestDetail } from "../api";
+import { api, type Quality, type RequestDetail } from "../api";
 import { ErrorMessage, formatTimestamp, messageOf, Pagination, SuccessMessage, useLoad } from "../ui";
 
 const PAGE_SIZE = 20;
@@ -11,6 +11,13 @@ const QUALITY_LABELS: Record<QualityChoice, string> = {
   good: "Good",
   usable: "Usable",
   good_or_usable: "Good or usable",
+};
+
+// What each choice asks the API for. Bad episodes are never requested, so never listed.
+const QUALITY_FILTERS: Record<QualityChoice, Quality[]> = {
+  good: ["good"],
+  usable: ["usable"],
+  good_or_usable: ["good", "usable"],
 };
 
 interface Props {
@@ -38,9 +45,7 @@ export default function AssignmentPicker({ request, episodesVersion, onAssigned 
     () =>
       api.listEpisodes({
         task_name: filters.taskName || undefined,
-        // The API filters on one quality at a time. For "good or usable" we ask for
-        // every quality and show bad episodes as not selectable.
-        quality: filters.quality === "good_or_usable" ? undefined : filters.quality,
+        quality: QUALITY_FILTERS[filters.quality],
         assigned: false,
         limit: PAGE_SIZE,
         offset,
@@ -48,11 +53,8 @@ export default function AssignmentPicker({ request, episodesVersion, onAssigned 
     [filters, offset, version, episodesVersion],
   );
 
-  const selectable = (episode: EpisodeListItem) => episode.quality !== "bad";
   const pageItems = page.data?.items ?? [];
-  const selectableOnPage = pageItems.filter(selectable);
-  const allOnPageSelected =
-    selectableOnPage.length > 0 && selectableOnPage.every((episode) => selected.has(episode.episode_id));
+  const allOnPageSelected = pageItems.length > 0 && pageItems.every((episode) => selected.has(episode.episode_id));
 
   const left = remaining - selected.size;
   const counter =
@@ -78,7 +80,7 @@ export default function AssignmentPicker({ request, episodesVersion, onAssigned 
 
   function toggleAllOnPage() {
     const next = new Set(selected);
-    for (const episode of selectableOnPage) {
+    for (const episode of pageItems) {
       if (allOnPageSelected) {
         next.delete(episode.episode_id);
       } else {
@@ -164,14 +166,13 @@ export default function AssignmentPicker({ request, episodesVersion, onAssigned 
                         type="checkbox"
                         checked={selected.has(episode.episode_id)}
                         onChange={() => toggle(episode.episode_id)}
-                        disabled={!selectable(episode)}
                         aria-label={`Select ${episode.episode_id}`}
                       />
                     </td>
                     <td>{episode.episode_id}</td>
                     <td>{episode.robot_id}</td>
                     <td>{episode.task_name}</td>
-                    <td>{selectable(episode) ? episode.quality : "bad (cannot be assigned)"}</td>
+                    <td>{episode.quality}</td>
                     <td>{formatTimestamp(episode.recorded_at)}</td>
                     <td>{episode.duration_seconds} s</td>
                   </tr>
