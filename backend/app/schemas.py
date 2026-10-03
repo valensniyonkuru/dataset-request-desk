@@ -5,7 +5,7 @@ field, so a hash can never end up in a response, whatever a route returns.
 """
 
 from datetime import date, datetime, timezone
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -232,3 +232,66 @@ class AssignOut(BaseModel):
     request_id: int
     assigned_count: int  # total for the request, after this batch
     assigned_episode_ids: list[str]  # the ids assigned by this call
+
+
+class ImportProblem(BaseModel):
+    line: int  # physical line in the file; the header is line 1
+    episode_id: str | None
+    reason: str
+    value: str | None = None  # the offending input
+    # For "conflict": {field: {"file": ..., "database": ...}} for each field that differs.
+    fields: dict[str, dict[str, Any]] | None = None
+
+
+class ImportReport(BaseModel):
+    """What an import did. total_rows == imported + sum(skipped) + sum(rejected)."""
+
+    status: Literal["running", "finished", "failed"]
+    error: str | None = None  # only when status is "failed"
+    file_name: str
+    file_sha256: str
+    total_rows: int  # data rows: not the header, not blank lines
+    imported: int
+    skipped: dict[str, int]
+    rejected: dict[str, int]
+    normalised: dict[str, int]
+    blank_lines: int
+    problems: list[ImportProblem]  # the first 200
+    problems_truncated: bool
+    previous_runs_with_same_file: list[int]
+    duration_ms: int
+
+
+class ImportResultOut(BaseModel):
+    import_run_id: int
+    report: ImportReport
+
+
+class ImportRunSummaryOut(BaseModel):
+    id: int
+    file_name: str
+    started_by_name: str | None  # null when started from the command line
+    started_at: datetime
+    finished_at: datetime | None
+    status: Literal["running", "finished", "failed"]
+    total_rows: int | None
+    imported: int | None
+    skipped: int | None
+    rejected: int | None
+
+
+class ImportRunPage(BaseModel):
+    items: list[ImportRunSummaryOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class ImportRunOut(BaseModel):
+    id: int
+    file_name: str
+    file_sha256: str
+    started_by_name: str | None
+    started_at: datetime
+    finished_at: datetime | None
+    report: ImportReport | None  # null while the import is still running

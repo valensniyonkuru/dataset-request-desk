@@ -40,6 +40,10 @@ TAGS = [
         "name": "assignments",
         "description": "Assigning episodes to a request (only while it is in_progress), and a request's episodes.",
     },
+    {
+        "name": "imports",
+        "description": "Importing the recording system's CSV export of episodes, and the reports of past imports.",
+    },
     {"name": "health", "description": "Liveness and database check, for monitoring."},
 ]
 
