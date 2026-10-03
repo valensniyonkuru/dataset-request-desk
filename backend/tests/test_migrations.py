@@ -1,5 +1,5 @@
 from alembic import command
-from sqlalchemy import inspect
+from sqlalchemy import inspect, text
 
 from app.db import engine
 
@@ -24,3 +24,11 @@ def test_downgrade_to_base_then_upgrade_to_head(alembic_config):
 def test_models_match_migrations(alembic_config):
     # Fails if a model was changed without a matching migration.
     command.check(alembic_config)
+
+
+def test_the_analytics_day_statistics_exist():
+    # Created by a migration with raw SQL: `alembic check` cannot see statistics objects.
+    with engine.connect() as connection:
+        names = set(connection.scalars(text("SELECT stxname FROM pg_statistic_ext")))
+
+    assert "st_episodes_utc_day_robot" in names
