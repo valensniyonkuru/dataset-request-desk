@@ -11,8 +11,8 @@ from sqlalchemy.orm import Session
 from app.auth import require_roles
 from app.db import get_db
 from app.models import Assignment, Request, RequestStatusHistory, User
-from app.schemas import RequestCreate, RequestDetailOut, RequestOut
-from app.workflow import INITIAL_STATUS, Status, available_transitions
+from app.schemas import RequestCreate, RequestDetailOut, RequestOut, TransitionIn
+from app.workflow import INITIAL_STATUS, TRANSITIONS, Status, available_transitions
 
 router = APIRouter(prefix="/requests", tags=["requests"])
 
@@ -132,3 +132,50 @@ def get_request(
     user: User = Depends(require_roles("client", "operator", "admin")),
 ):
     return _request_detail(db, request_id, user)
+
+
+@router.post("/{request_id}/transition", response_model=RequestDetailOut)
+def transition_request(
+    request_id: int,
+    body: TransitionIn,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_roles("client", "operator", "admin")),
+):
+    """The only code path that changes a request's status."""
+    # FOR UPDATE locks the row until this transaction ends. A second transition
+    # on the same request (e.g. a double click on accept and reject) waits here,
+    # then reads the new status and fails the checks below.
+    query = select(Request).where(Request.id == request_id).with_for_update()
+    if user.role == "client":
+        query = query.where(Request.client_id == user.id)
+    dataset_request = db.scalar(query)
+
+    # The checks run in this order, so a client never learns about another client's request.
+    if dataset_request is None:
+        raise HTTPException(status_code=404, detail="Request not found")
+
+    from_status = dataset_request.status
+    allowed_roles = TRANSITIONS.get((from_status, body.to_status))
+    if allowed_roles is None:
+        raise HTTPException(status_code=409, detail=f"Cannot move from {from_status} to {body.to_status}")
+    if user.role not in allowed_roles:
+        raise HTTPException(status_code=403, detail="Your role cannot make this status change")
+
+    if body.to_status == "delivered":
+        assigned = db.scalar(
+            select(func.count()).select_from(Assignment).where(Assignment.request_id == dataset_request.id)
+        )
+        if assigned < dataset_request.episodes_requested:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Cannot deliver: {assigned} of {dataset_request.episodes_requested} episodes assigned",
+            )
+
+    dataset_request.status = body.to_status  # updated_at is refreshed by the model's onupdate
+    db.add(
+        RequestStatusHistory(
+            request_id=dataset_request.id, from_status=from_status, to_status=body.to_status, changed_by=user.id
+        )
+    )
+    db.commit()  # the status change and its history row are saved together, or not at all
+    return _request_detail(db, dataset_request.id, user)
