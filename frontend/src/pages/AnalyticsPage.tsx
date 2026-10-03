@@ -88,7 +88,9 @@ export function AnalyticsSections({ analytics }: { analytics: Analytics }) {
           <table className="numbers">
             <thead>
               <tr>
-                <th scope="col">Date (UTC)</th>
+                <th scope="col" className="text-left">
+                  Date (UTC)
+                </th>
                 {pivot.robots.map((robot) => (
                   <th scope="col" key={robot}>
                     {robot}

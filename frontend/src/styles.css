@@ -297,9 +297,16 @@ caption {
   padding: 0.4rem 0;
 }
 
+/* Numbers and their column headers both line up on the right. */
+table.numbers th,
 table.numbers td {
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+table.numbers th[scope="row"],
+table.numbers .text-left {
+  text-align: left;
 }
 
 .clickable-rows tbody tr {
