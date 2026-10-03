@@ -9,11 +9,13 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.logging_config import setup_logging
+from app.routers import auth
 
 setup_logging()
 logger = logging.getLogger("app")
 
 app = FastAPI(title="Dataset Request Desk API")
+app.include_router(auth.router)
 
 
 @app.middleware("http")
@@ -35,7 +37,7 @@ async def log_requests(request: Request, call_next):
                     "path": request.url.path,
                     "status": status,
                     "duration_ms": round(duration_ms, 2),
-                    # Set by authentication once it exists; null until then.
+                    # Set by get_current_user (or by login); null for anonymous requests.
                     "user_id": getattr(request.state, "user_id", None),
                 }
             },
