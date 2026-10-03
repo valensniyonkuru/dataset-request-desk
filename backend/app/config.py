@@ -19,3 +19,9 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# Episode import rules (see docs/import-rules.md). Constants, not environment
+# settings: changing one changes the rules, so it belongs in code review.
+KNOWN_ROBOTS = ("arm-01", "arm-02", "arm-03", "mobile-01", "humanoid-01")
+MAX_DURATION_SECONDS = 3600  # episodes are short clips; longer means a data error
+MAX_IMPORT_FILE_BYTES = 20 * 1024 * 1024  # uploads only; the CLI has no limit
