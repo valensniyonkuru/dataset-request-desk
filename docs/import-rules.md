@@ -101,8 +101,14 @@ Checked in this order; a row is rejected for the **first** problem found.
 | Not valid UTF-8 (checked for the whole file before anything is saved) | 422 |
 | Header missing a required column (names are trimmed and case-insensitive) | 422, listing the missing columns |
 
-Accepted and ignored: a UTF-8 BOM, extra columns, columns in any order, blank
-or whitespace-only lines (counted in `blank_lines`), `\r\n` line endings.
+Accepted and ignored: a UTF-8 BOM, extra columns, columns in any order, `\r\n`
+line endings, and lines with no values at all: empty, only spaces, or only
+commas such as `,,,,,,` (spreadsheets often add these at the end). Those are
+counted in `blank_lines`, not in `total_rows`.
+
+A CSV syntax error part-way through (for example an unclosed quote or a NUL
+byte) stops the import with 422. Chunks committed before that line stay; fix
+the file and import it again: they are skipped as `already_exists`.
 
 ### Re-importing
 
@@ -119,3 +125,5 @@ runs with the same SHA-256 in `previous_runs_with_same_file`.
   clip is a data error, and accepting it would distort duration analytics.
 - **Whitespace-only line** at the end of the file: treated as a blank line,
   not as a malformed row.
+- **Lines with only commas** (`,,,,,,`): also blank lines. They hold no data,
+  and reporting them as `missing_episode_id` would only add noise.
