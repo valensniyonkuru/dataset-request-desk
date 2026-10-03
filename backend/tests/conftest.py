@@ -147,33 +147,46 @@ def create_request(db_session):
 
 
 @pytest.fixture
-def assign_episodes(db_session):
-    """Factory: assign_episodes(request, count, assigned_by) creates `count` new episodes and assigns them.
+def create_episode(db_session):
+    """Factory: create_episode(quality="bad", task_name=...) -> Episode, with a new unique id.
 
-    Inserts rows directly, because there is no assignment endpoint yet.
+    Ids are numbered in creation order: EP-TEST-0001, EP-TEST-0002, ...
     """
     episode_numbers = itertools.count(1)
 
-    def _assign_episodes(dataset_request: Request, count: int, assigned_by: User) -> None:
-        episodes = [
-            Episode(
-                episode_id=f"EP-TEST-{next(episode_numbers)}",
-                robot_id="arm-01",
-                task_name=dataset_request.task_name,
-                recorded_at=datetime(2026, 9, 1, tzinfo=timezone.utc),
-                duration_seconds=30,
-                operator_name="Aline",
-                quality="good",
-            )
-            for _ in range(count)
-        ]
-        db_session.add_all(episodes)
-        db_session.flush()  # episodes first: assignments reference them
+    def _create_episode(**fields) -> Episode:
+        values = {
+            "episode_id": f"EP-TEST-{next(episode_numbers):04d}",
+            "robot_id": "arm-01",
+            "task_name": "pick cup",
+            "recorded_at": datetime(2026, 9, 1, tzinfo=timezone.utc),
+            "duration_seconds": 30,
+            "operator_name": "Aline",
+            "quality": "good",
+        }
+        episode = Episode(**(values | fields))
+        db_session.add(episode)
+        db_session.flush()
+        return episode
+
+    return _create_episode
+
+
+@pytest.fixture
+def assign_episodes(db_session, create_episode):
+    """Factory: assign_episodes(request, count, assigned_by) creates `count` new episodes and assigns them.
+
+    Inserts rows directly, without the API's checks, so a test can set up any situation.
+    """
+
+    def _assign_episodes(dataset_request: Request, count: int, assigned_by: User) -> list[Episode]:
+        episodes = [create_episode(task_name=dataset_request.task_name) for _ in range(count)]
         db_session.add_all(
             Assignment(request_id=dataset_request.id, episode_id=episode.episode_id, assigned_by=assigned_by.id)
             for episode in episodes
         )
         db_session.flush()
+        return episodes
 
     return _assign_episodes
 
