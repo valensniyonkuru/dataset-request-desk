@@ -3,9 +3,12 @@ import json
 from datetime import datetime, timedelta, timezone
 
 import jwt
+import pytest
+from fastapi import HTTPException
 
-from app.auth import ALGORITHM
+from app.auth import ALGORITHM, require_roles
 from app.config import settings
+from app.models import User
 
 GENERIC_401 = {"detail": "Invalid email or password"}
 
@@ -164,3 +167,43 @@ def test_me_with_an_expired_token_is_401(client, create_user):
     response = client.get("/auth/me", headers={"Authorization": f"Bearer {expired}"})
 
     assert response.status_code == 401
+
+
+# --- roles ---
+
+
+def test_admin_is_not_implicitly_allowed():
+    admin = User(role="admin")
+
+    with pytest.raises(HTTPException) as error:
+        require_roles("operator")(user=admin)
+
+    assert error.value.status_code == 403
+    assert require_roles("operator", "admin")(user=admin) is admin
+
+
+# --- the user is loaded from the database on every request ---
+
+
+def test_deactivation_takes_effect_on_the_next_request(client, create_user, auth_headers):
+    admin = create_user("admin@example.com", role="admin")
+    user = create_user("client@example.com")
+    user_headers = auth_headers(user)  # a valid token, issued before the deactivation
+    assert client.get("/auth/me", headers=user_headers).status_code == 200
+
+    deactivate = client.patch(f"/users/{user.id}", json={"is_active": False}, headers=auth_headers(admin))
+    assert deactivate.status_code == 200
+
+    assert client.get("/auth/me", headers=user_headers).status_code == 401
+
+
+def test_role_change_takes_effect_on_the_next_request(client, create_user, auth_headers):
+    admin = create_user("admin@example.com", role="admin")
+    operator = create_user("ops@example.com", role="operator")
+    operator_headers = auth_headers(operator)  # the token does not contain the role
+    assert client.get("/users", headers=operator_headers).status_code == 403
+
+    promote = client.patch(f"/users/{operator.id}", json={"role": "admin"}, headers=auth_headers(admin))
+    assert promote.status_code == 200
+
+    assert client.get("/users", headers=operator_headers).status_code == 200
