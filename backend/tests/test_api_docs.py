@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 
 from app.config import settings
 from app.main import app
-from app.schemas import LoginIn, RequestCreate, TransitionIn, UserCreate
+from app.schemas import AssignIn, LoginIn, RequestCreate, TransitionIn, UserCreate
 
 client = TestClient(app)
 
@@ -75,7 +75,7 @@ def test_description_lists_every_seed_account():
         assert f"| {user['email']} | {user['role']} | {user['password']} |" in app.description
 
 
-@pytest.mark.parametrize("model", [LoginIn, UserCreate, RequestCreate, TransitionIn])
+@pytest.mark.parametrize("model", [LoginIn, UserCreate, RequestCreate, TransitionIn, AssignIn])
 def test_examples_are_valid_input(model):
     # "Try it out" sends the example as is, so it must pass validation.
     [example] = model.model_config["json_schema_extra"]["examples"]
