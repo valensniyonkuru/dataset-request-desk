@@ -18,6 +18,12 @@ Role = Literal["client", "operator", "admin"]
 EMAIL_PATTERN = r"^[^@\s]+@[^@\s]+\.[^@\s]+$"
 
 
+class ErrorOut(BaseModel):
+    """Body of every error response except 422. Used only to document errors in /docs."""
+
+    detail: str
+
+
 class LoginIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

@@ -7,6 +7,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.api_docs import DESCRIPTION, TAGS
 from app.db import get_db
 from app.logging_config import setup_logging
 from app.routers import auth, requests, users
@@ -14,7 +15,7 @@ from app.routers import auth, requests, users
 setup_logging()
 logger = logging.getLogger("app")
 
-app = FastAPI(title="Dataset Request Desk API")
+app = FastAPI(title="Dataset Request Desk API", description=DESCRIPTION, version="0.1.0", openapi_tags=TAGS)
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(requests.router)
