@@ -7,6 +7,7 @@ runs inside a transaction that is rolled back, so tests never see each other's d
 """
 
 import functools
+import io
 import itertools
 import os
 from datetime import date, datetime, timezone
@@ -36,6 +37,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 from app.auth import create_access_token  # noqa: E402  (app imports must come after the line above)
 from app.db import engine, get_db  # noqa: E402
+from app.importer import CHUNK_SIZE, import_episodes  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models import Assignment, Episode, Request, User  # noqa: E402
 from app.security import hash_password  # noqa: E402
@@ -189,6 +191,26 @@ def assign_episodes(db_session, create_episode):
         return episodes
 
     return _assign_episodes
+
+
+@pytest.fixture
+def import_file(db_session):
+    """Factory: import_file(csv_text_or_bytes, chunk_size=...) -> (import_run_id, report).
+
+    Runs the importer with the test's rolled-back session, and checks on every
+    report that each data row was counted exactly once.
+    """
+
+    def _import_file(content: str | bytes, chunk_size: int = CHUNK_SIZE, file_name: str = "test.csv"):
+        data = content.encode("utf-8") if isinstance(content, str) else content
+        run_id, report = import_episodes(
+            db_session, io.BytesIO(data), file_name=file_name, started_by=None, chunk_size=chunk_size
+        )
+        counted = report["imported"] + sum(report["skipped"].values()) + sum(report["rejected"].values())
+        assert report["total_rows"] == counted, report
+        return run_id, report
+
+    return _import_file
 
 
 @pytest.fixture
