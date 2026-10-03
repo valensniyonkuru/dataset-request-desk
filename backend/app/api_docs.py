@@ -35,6 +35,11 @@ TAGS = [
     {"name": "auth", "description": "Log in, log out, and see who you are logged in as."},
     {"name": "users", "description": "User management (admin only). Users are deactivated, never deleted."},
     {"name": "requests", "description": "Dataset requests and their status workflow."},
+    {"name": "episodes", "description": "Recorded robot episodes, to find ones to assign (operators and admins)."},
+    {
+        "name": "assignments",
+        "description": "Assigning episodes to a request (only while it is in_progress), and a request's episodes.",
+    },
     {"name": "health", "description": "Liveness and database check, for monitoring."},
 ]
 

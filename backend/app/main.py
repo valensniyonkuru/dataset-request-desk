@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.api_docs import DESCRIPTION, TAGS
 from app.db import get_db
 from app.logging_config import setup_logging
-from app.routers import auth, requests, users
+from app.routers import auth, episodes, requests, users
 
 setup_logging()
 logger = logging.getLogger("app")
@@ -19,6 +19,7 @@ app = FastAPI(title="Dataset Request Desk API", description=DESCRIPTION, version
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(requests.router)
+app.include_router(episodes.router)
 
 
 @app.middleware("http")
