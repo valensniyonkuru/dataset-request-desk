@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from app.workflow import Status
 
 Role = Literal["client", "operator", "admin"]
+Quality = Literal["good", "usable", "bad"]
 
 # Deliberately simple: one "@", no spaces, a dot in the domain. Good enough to
 # catch typos in an internal tool, without an extra dependency.
@@ -175,3 +176,59 @@ class RequestDetailOut(RequestOut):
     history: list[HistoryEntryOut]  # oldest first
     # Status changes the current user may make right now, according to the workflow table.
     available_transitions: list[Status]
+
+
+class EpisodeOut(BaseModel):
+    episode_id: str
+    robot_id: str
+    task_name: str
+    recorded_at: datetime
+    duration_seconds: int
+    operator_name: str
+    quality: Quality
+    import_run_id: int | None
+    created_at: datetime
+
+
+class EpisodeListItem(EpisodeOut):
+    assigned_request_id: int | None  # null when the episode is not assigned
+
+
+class EpisodePage(BaseModel):
+    items: list[EpisodeListItem]
+    total: int  # all rows matching the filters, not just this page
+    limit: int
+    offset: int
+
+
+class AssignedEpisodeOut(EpisodeOut):
+    assigned_at: datetime
+
+
+class AssignedEpisodePage(BaseModel):
+    items: list[AssignedEpisodeOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class AssignIn(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={"examples": [{"episode_ids": ["EP-00156", "EP-00138"]}]},
+    )
+
+    episode_ids: list[str] = Field(min_length=1, max_length=500)
+
+    @field_validator("episode_ids")
+    @classmethod
+    def no_duplicates(cls, value: list[str]) -> list[str]:
+        if len(set(value)) != len(value):
+            raise ValueError("episode_ids contains the same id more than once")
+        return value
+
+
+class AssignOut(BaseModel):
+    request_id: int
+    assigned_count: int  # total for the request, after this batch
+    assigned_episode_ids: list[str]  # the ids assigned by this call
