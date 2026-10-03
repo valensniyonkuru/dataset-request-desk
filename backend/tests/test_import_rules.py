@@ -3,7 +3,7 @@
 from datetime import datetime, timedelta, timezone
 
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 
 from app import importer
 from app.importer import CHUNK_SIZE, ImportFileError
@@ -225,6 +225,19 @@ def test_a_different_episode_in_the_database_is_a_conflict_and_is_not_overwritte
     ]
     db_session.refresh(stored)
     assert (stored.duration_seconds, stored.quality) == (99, "bad")
+
+
+def test_a_time_in_a_repeated_daylight_saving_hour_is_still_already_exists(import_file, db_session):
+    # Timestamps come back in the database session's time zone. In Cairo, local
+    # 23:00 to 23:59 on 30 October 2025 happened twice when daylight saving ended.
+    # (Found when the volume test ran against a Postgres set to Africa/Cairo.)
+    db_session.execute(text("SET TIME ZONE 'Africa/Cairo'"))  # undone with the test transaction
+    content = csv_text(row(recorded_at="2025-10-30T20:25:00"))
+    import_file(content)
+
+    _, second = import_file(content)
+
+    assert only_nonzero(second["skipped"]) == {"already_exists": 1}
 
 
 def test_imported_episodes_point_to_their_import_run(import_file, db_session):

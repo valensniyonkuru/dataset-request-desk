@@ -346,15 +346,26 @@ def _skip_existing(existing: dict[str, Episode], rows_by_id: dict, report: dict)
     for episode_id, episode in existing.items():
         line, values = rows_by_id[episode_id]
         differences = {
-            field: {"file": _for_json(values[field]), "database": _for_json(getattr(episode, field))}
+            field: {"file": _for_json(values[field]), "database": _for_json(_stored_value(episode, field))}
             for field in COMPARED_FIELDS
-            if values[field] != getattr(episode, field)
+            if values[field] != _stored_value(episode, field)
         }
         if differences:
             report["skipped"]["conflict"] += 1
             _add_problem(report, line, episode_id, "conflict", fields=differences)
         else:
             report["skipped"]["already_exists"] += 1
+
+
+def _stored_value(episode: Episode, field: str):
+    """A stored value, ready to compare with a parsed one.
+
+    Timestamps come back in the database session's time zone. They are converted
+    to UTC, like the parsed ones, because Python never treats a local time in a
+    repeated hour (when daylight saving ends) as equal to a time in another zone.
+    """
+    value = getattr(episode, field)
+    return value.astimezone(timezone.utc) if isinstance(value, datetime) else value
 
 
 def _for_json(value):
