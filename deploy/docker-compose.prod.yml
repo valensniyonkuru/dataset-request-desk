@@ -1,7 +1,8 @@
 # Production stack. Lives on the server in /opt/dataset-request-desk/.
 # Run from that folder:
 #   docker compose -f docker-compose.prod.yml pull
-#   docker compose -f docker-compose.prod.yml up -d
+#   docker compose -f docker-compose.prod.yml up -d --wait
+#   docker compose -f docker-compose.prod.yml exec -T api python -m app.seed
 #
 # Only the host nginx is public. It forwards HTTPS traffic to the two ports
 # below, which are bound to 127.0.0.1 so they are not reachable from outside.
