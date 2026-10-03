@@ -2,7 +2,7 @@ import logging
 import time
 
 from fastapi import Depends, FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -45,6 +45,12 @@ async def log_requests(request: Request, call_next):
                 }
             },
         )
+
+
+@app.get("/", include_in_schema=False)
+def root():
+    """Opening the API's base URL in a browser lands on the interactive docs."""
+    return RedirectResponse("/docs", status_code=307)
 
 
 @app.get(

@@ -9,6 +9,7 @@ from app.auth import get_current_user
 from app.main import app
 
 PUBLIC_ROUTES = {
+    "/",  # only redirects to /docs
     "/health",
     "/auth/login",
     "/auth/logout",
