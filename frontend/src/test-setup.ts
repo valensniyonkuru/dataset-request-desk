@@ -1,5 +1,8 @@
 import { cleanup } from "@testing-library/react";
-import { afterEach } from "vitest";
+import { afterEach, vi } from "vitest";
 
-// Unmount whatever a test rendered, so the next test starts from an empty page.
-afterEach(cleanup);
+afterEach(() => {
+  cleanup(); // unmount whatever a test rendered
+  vi.restoreAllMocks(); // undo every vi.spyOn on the api functions
+  vi.unstubAllGlobals(); // undo vi.stubGlobal("fetch", ...)
+});
