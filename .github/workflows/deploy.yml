@@ -83,8 +83,9 @@ jobs:
 
       # Deploy the exact images built above (tagged with this commit's SHA).
       # Only touches the "desk" compose project; nothing else on the server.
-      # --wait blocks until every service's healthcheck passes (and fails the
-      # step if one becomes unhealthy), so the next step runs on a healthy API.
+      # --wait blocks until every service's healthcheck passes, and fails the
+      # step if one becomes unhealthy (e.g. a migration or the seed failed,
+      # so the api container never starts serving).
       - name: Pull images and restart the stack
         run: |
           ssh -i ~/.ssh/deploy_key "$SERVER_USER@$SERVER_HOST" \
@@ -92,15 +93,6 @@ jobs:
             && export IMAGE_TAG=$GITHUB_SHA \
             && docker compose -f docker-compose.prod.yml pull \
             && docker compose -f docker-compose.prod.yml up -d --wait --wait-timeout 180"
-
-      # Idempotent: creates missing seed users, updates existing ones.
-      # A non-zero exit from the seed fails this step and the job.
-      - name: Seed users
-        run: |
-          ssh -i ~/.ssh/deploy_key "$SERVER_USER@$SERVER_HOST" \
-            "cd /opt/dataset-request-desk \
-            && export IMAGE_TAG=$GITHUB_SHA \
-            && docker compose -f docker-compose.prod.yml exec -T api python -m app.seed"
 
       # The containers need a few seconds to start and run migrations,
       # so retry for about a minute before failing the job.

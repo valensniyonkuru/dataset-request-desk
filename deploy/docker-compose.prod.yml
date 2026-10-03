@@ -2,7 +2,7 @@
 # Run from that folder:
 #   docker compose -f docker-compose.prod.yml pull
 #   docker compose -f docker-compose.prod.yml up -d --wait
-#   docker compose -f docker-compose.prod.yml exec -T api python -m app.seed
+# The api container migrates the database and seeds the demo users on start.
 #
 # Only the host nginx is public. It forwards HTTPS traffic to the two ports
 # below, which are bound to 127.0.0.1 so they are not reachable from outside.
@@ -32,6 +32,9 @@ services:
   api:
     image: ghcr.io/valensniyonkuru/dataset-request-desk-backend:${IMAGE_TAG:-latest}
     env_file: /opt/dataset-request-desk/.env
+    environment:
+      # The brief requires working demo accounts, so seed them on every start.
+      RUN_SEED: "1"
     depends_on:
       db:
         condition: service_healthy

@@ -16,11 +16,9 @@ docker compose up --build
 - Frontend: http://localhost:8082
 - Backend: http://localhost:8000/health
 
-Create the seed users (safe to run again; it updates existing users):
-
-```sh
-docker compose exec api python -m app.seed
-```
+On start, the api container applies the database migrations and creates the
+seed users below (`RUN_SEED=1`). Re-running is safe: existing users are updated,
+not duplicated.
 
 ## Seed accounts
 

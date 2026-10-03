@@ -25,6 +25,8 @@ services:
       DATABASE_URL: postgresql+psycopg://desk:desk@db:5432/desk
       SECRET_KEY: local-dev-secret-not-for-production
       ENV: development
+      # Create/update the demo users from seed/users.json on every start.
+      RUN_SEED: "1"
     depends_on:
       db:
         condition: service_healthy
