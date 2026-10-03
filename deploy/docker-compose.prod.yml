@@ -1,0 +1,73 @@
+# Production stack. Lives on the server in /opt/dataset-request-desk/.
+# Run from that folder:
+#   docker compose -f docker-compose.prod.yml pull
+#   docker compose -f docker-compose.prod.yml up -d
+#
+# Only the host nginx is public. It forwards HTTPS traffic to the two ports
+# below, which are bound to 127.0.0.1 so they are not reachable from outside.
+
+# Fixed project name: containers, network and volume are all prefixed "desk_",
+# so this stack never collides with the other apps on the server.
+name: desk
+
+services:
+  db:
+    image: postgres:16-alpine
+    env_file: /opt/dataset-request-desk/.env
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks:
+      - private
+    # No "ports": the database is only reachable from inside the private network.
+    healthcheck:
+      # $$ escapes compose interpolation, so the shell in the container
+      # reads these values from the container's environment.
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  api:
+    image: ghcr.io/valensniyonkuru/dataset-request-desk-backend:${IMAGE_TAG:-latest}
+    env_file: /opt/dataset-request-desk/.env
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - private
+    ports:
+      - "127.0.0.1:3004:8000"
+    healthcheck:
+      # The slim Python image has no curl. urlopen raises on a non-2xx
+      # response, so a 503 from /health marks the container unhealthy.
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  web:
+    image: ghcr.io/valensniyonkuru/dataset-request-desk-frontend:${IMAGE_TAG:-latest}
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - private
+    ports:
+      - "127.0.0.1:8082:80"
+    healthcheck:
+      # 127.0.0.1, not localhost: busybox wget may try IPv6 first and nginx
+      # only listens on IPv4 inside the container.
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+networks:
+  private:
+
+volumes:
+  db_data:
