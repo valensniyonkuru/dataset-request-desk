@@ -6,7 +6,10 @@ database is dropped, recreated empty and migrated with Alembic. Each test then
 runs inside a transaction that is rolled back, so tests never see each other's data.
 """
 
+import functools
+import itertools
 import os
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -34,10 +37,14 @@ from fastapi.testclient import TestClient  # noqa: E402
 from app.auth import create_access_token  # noqa: E402  (app imports must come after the line above)
 from app.db import engine, get_db  # noqa: E402
 from app.main import app  # noqa: E402
-from app.models import User  # noqa: E402
+from app.models import Assignment, Episode, Request, User  # noqa: E402
 from app.security import hash_password  # noqa: E402
 
 ALEMBIC_CONFIG = Config(str(Path(__file__).resolve().parent.parent / "alembic.ini"))
+
+# Argon2 is slow on purpose (~0.1 s per hash). Tests create hundreds of users,
+# so each distinct password is hashed once and the hash reused.
+_cached_hash = functools.cache(hash_password)
 
 
 def _recreate_test_database() -> None:
@@ -104,7 +111,7 @@ def create_user(db_session):
             name=email.split("@")[0],
             role=role,
             organisation="Test Org" if role == "client" else None,
-            password_hash=hash_password(password),
+            password_hash=_cached_hash(password),
             is_active=is_active,
         )
         db_session.add(user)
@@ -112,6 +119,63 @@ def create_user(db_session):
         return user
 
     return _create_user
+
+
+@pytest.fixture
+def create_request(db_session):
+    """Factory: create_request(client, status="delivered", episodes_requested=2) -> Request.
+
+    Inserts the row directly, in any status, without history. Use the API when
+    the test is about how a request gets into a status.
+    """
+
+    def _create_request(
+        client: User, status: str = "submitted", episodes_requested: int = 2, task_name: str = "pick cup"
+    ) -> Request:
+        dataset_request = Request(
+            client_id=client.id,
+            task_name=task_name,
+            episodes_requested=episodes_requested,
+            deadline=date(2030, 1, 1),
+            status=status,
+        )
+        db_session.add(dataset_request)
+        db_session.flush()
+        return dataset_request
+
+    return _create_request
+
+
+@pytest.fixture
+def assign_episodes(db_session):
+    """Factory: assign_episodes(request, count, assigned_by) creates `count` new episodes and assigns them.
+
+    Inserts rows directly, because there is no assignment endpoint yet.
+    """
+    episode_numbers = itertools.count(1)
+
+    def _assign_episodes(dataset_request: Request, count: int, assigned_by: User) -> None:
+        episodes = [
+            Episode(
+                episode_id=f"EP-TEST-{next(episode_numbers)}",
+                robot_id="arm-01",
+                task_name=dataset_request.task_name,
+                recorded_at=datetime(2026, 9, 1, tzinfo=timezone.utc),
+                duration_seconds=30,
+                operator_name="Aline",
+                quality="good",
+            )
+            for _ in range(count)
+        ]
+        db_session.add_all(episodes)
+        db_session.flush()  # episodes first: assignments reference them
+        db_session.add_all(
+            Assignment(request_id=dataset_request.id, episode_id=episode.episode_id, assigned_by=assigned_by.id)
+            for episode in episodes
+        )
+        db_session.flush()
+
+    return _assign_episodes
 
 
 @pytest.fixture
