@@ -48,3 +48,20 @@ docker compose run --rm api pytest
 The tests use a separate database (`TEST_DATABASE_URL`, or the `DATABASE_URL`
 database name plus `_test`). It is dropped, recreated and migrated at the start
 of every run, and each test's changes are rolled back.
+
+## Analytics with 5 million episodes
+
+`GET /analytics` runs three SQL queries, whatever the data size; all counting,
+grouping and the median happen in PostgreSQL. Measured on 2 000 000 generated
+episodes (details, plans and method in [docs/analytics-scale.md](docs/analytics-scale.md)):
+about 150 ms per query for a 30-day range (using the index on `recorded_at`)
+and 175 to 270 ms for a full year (a parallel sequential scan, the right plan
+when the range covers the whole table). A migration adds statistics on the
+UTC-day expression, without which Postgres misjudged the number of groups and
+spilled a sort to disk (that query was 2.5 times slower at 2M).
+
+At 5 million episodes, extrapolating from those measurements, each query
+should take roughly half a second for the widest range: slower, but still
+working with the current design. Beyond that, in order: a BRIN index on
+`recorded_at` if episodes arrive in time order, a pre-aggregated daily
+table maintained by the import, monthly partitioning, and only then a cache.
