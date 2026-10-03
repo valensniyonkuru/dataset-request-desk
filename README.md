@@ -45,6 +45,12 @@ From [seed/users.json](seed/users.json). Passwords are stored only as Argon2 has
 docker compose run --rm api pytest
 ```
 
+Frontend (type check, unit tests with mocked API calls, production build):
+
+```sh
+cd frontend && npm ci && npm run typecheck && npm test && npm run build
+```
+
 The tests use a separate database (`TEST_DATABASE_URL`, or the `DATABASE_URL`
 database name plus `_test`). It is dropped, recreated and migrated at the start
 of every run, and each test's changes are rolled back.
