@@ -1,0 +1,17 @@
+# The backend image is built with the repo root as context, because it needs
+# seed/ as well as backend/. Ignore everything, then allow only those two.
+# (The frontend image uses ./frontend as context and its own .dockerignore.)
+*
+!backend
+!seed
+
+# Never send these, even from inside the allowed folders.
+**/__pycache__
+**/*.pyc
+**/.venv
+**/venv
+**/.pytest_cache
+**/.env
+
+# Large CSVs made with seed/generate_episodes.py are for local load tests only.
+seed/*large*.csv

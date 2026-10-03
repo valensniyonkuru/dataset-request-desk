@@ -1,3 +1,5 @@
+# Build from the repo root, so seed/ is available:
+#   docker build -f backend/Dockerfile .
 FROM python:3.12-slim
 
 # No .pyc files in the image; print logs immediately instead of buffering them.
@@ -7,14 +9,16 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 # Install dependencies first, so this layer stays cached when only code changes.
-COPY requirements.txt .
+COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY alembic.ini pytest.ini ./
-COPY --chmod=755 entrypoint.sh ./
-COPY app ./app
-COPY migrations ./migrations
-COPY tests ./tests
+COPY backend/alembic.ini backend/pytest.ini ./
+COPY --chmod=755 backend/entrypoint.sh ./
+COPY backend/app ./app
+COPY backend/migrations ./migrations
+COPY backend/tests ./tests
+# users.json for `python -m app.seed` (SEED_DIR defaults to /app/seed).
+COPY seed ./seed
 
 # Run as an unprivileged user, not root.
 RUN useradd --create-home --uid 1000 appuser
