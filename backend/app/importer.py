@@ -313,6 +313,9 @@ def _save_chunk(db: Session, run_id: int, chunk: list[tuple[int, dict]], report:
     existing = _existing_episodes(db, rows_by_id.keys())
     _skip_existing(existing, rows_by_id, report)
     new_rows = [values for episode_id, (_, values) in rows_by_id.items() if episode_id not in existing]
+    # Sorted, so every import locks new ids in the same order: two imports of
+    # overlapping files wait for each other instead of deadlocking.
+    new_rows.sort(key=lambda values: values["episode_id"])
 
     if new_rows:
         # ON CONFLICT DO NOTHING: if another import inserted one of these ids
