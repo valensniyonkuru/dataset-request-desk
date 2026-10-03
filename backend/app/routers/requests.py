@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.api_docs import NOT_LOGGED_IN, error_responses
 from app.auth import require_roles
 from app.db import get_db
 from app.models import Assignment, Request, RequestStatusHistory, User
@@ -15,6 +16,8 @@ from app.schemas import RequestCreate, RequestDetailOut, RequestOut, TransitionI
 from app.workflow import INITIAL_STATUS, TRANSITIONS, Status, available_transitions
 
 router = APIRouter(prefix="/requests", tags=["requests"])
+
+REQUEST_NOT_FOUND = "No request with this id, or (for a client) a request that belongs to another client."
 
 # Number of assigned episodes per request, counted by the database in one grouped query.
 assigned_counts = (
@@ -75,7 +78,19 @@ def _request_detail(db: Session, request_id: int, user: User) -> dict:
     }
 
 
-@router.post("", response_model=RequestDetailOut, status_code=201)
+@router.post(
+    "",
+    response_model=RequestDetailOut,
+    status_code=201,
+    summary="Create a request",
+    description=(
+        "**Roles:** client. The request belongs to the logged-in client and starts as `submitted`.\n\n"
+        "**422**: task name empty or over 100 characters, `episodes_requested` not a whole number from 1 "
+        "to 100000, a deadline in the past, notes over 2000 characters, or an unknown field "
+        "(such as `client_id` or `status`)."
+    ),
+    responses=error_responses({401: NOT_LOGGED_IN, 403: "Only clients create requests."}),
+)
 def create_request(
     body: RequestCreate,
     db: Session = Depends(get_db),
@@ -100,7 +115,17 @@ def create_request(
     return _request_detail(db, dataset_request.id, user)
 
 
-@router.get("", response_model=list[RequestOut])
+@router.get(
+    "",
+    response_model=list[RequestOut],
+    summary="List requests",
+    description=(
+        "**Roles:** client, operator, admin. Clients see only their own requests (and `client_id` is "
+        "ignored for them); operators and admins see all. Newest first.\n\n"
+        "**422**: unknown `status`, `limit` outside 1 to 200, or a negative `offset`."
+    ),
+    responses=error_responses({401: NOT_LOGGED_IN}),
+)
 def list_requests(
     status: Status | None = None,
     task_name: str | None = None,
@@ -125,7 +150,17 @@ def list_requests(
     return [dict(row) for row in db.execute(query).mappings()]
 
 
-@router.get("/{request_id}", response_model=RequestDetailOut)
+@router.get(
+    "/{request_id}",
+    response_model=RequestDetailOut,
+    summary="Get one request",
+    description=(
+        "**Roles:** client (own requests only), operator, admin. Includes the status history, oldest first, "
+        "and `available_transitions`: the status changes the current user may make.\n\n"
+        "**422**: `request_id` is not a whole number."
+    ),
+    responses=error_responses({401: NOT_LOGGED_IN, 404: REQUEST_NOT_FOUND}),
+)
 def get_request(
     request_id: int,
     db: Session = Depends(get_db),
@@ -134,7 +169,25 @@ def get_request(
     return _request_detail(db, request_id, user)
 
 
-@router.post("/{request_id}/transition", response_model=RequestDetailOut)
+@router.post(
+    "/{request_id}/transition",
+    response_model=RequestDetailOut,
+    summary="Change a request's status",
+    description=(
+        "**Roles:** client, operator, admin, each only for the steps they own. Operators and admins move "
+        "a request to `in_progress` and `delivered`; the owning client accepts or rejects a delivery. "
+        "Every change is recorded in the history.\n\n"
+        "**422**: `to_status` is not one of `submitted`, `in_progress`, `delivered`, `accepted`, `rejected`."
+    ),
+    responses=error_responses(
+        {
+            401: NOT_LOGGED_IN,
+            403: "The change exists, but your role may not make it.",
+            404: REQUEST_NOT_FOUND,
+            409: "Not a valid change from the current status, or fewer episodes assigned than requested.",
+        }
+    ),
+)
 def transition_request(
     request_id: int,
     body: TransitionIn,

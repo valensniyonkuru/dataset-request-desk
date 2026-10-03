@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.api_docs import NOT_LOGGED_IN, error_responses
 from app.auth import create_access_token, get_current_user
 from app.config import settings
 from app.db import get_db
@@ -21,7 +22,21 @@ def _cookie_settings() -> dict:
     return {"httponly": True, "samesite": "lax", "path": "/", "secure": settings.ENV == "production"}
 
 
-@router.post("/login", response_model=UserOut)
+@router.post(
+    "/login",
+    response_model=UserOut,
+    summary="Log in",
+    description=(
+        "**Public.** Checks the email (case-insensitive) and password, sets the HttpOnly session cookie "
+        "and returns the user.\n\n**422**: the body is not JSON or a field is missing."
+    ),
+    responses=error_responses(
+        {
+            401: "Wrong email or password, or the user is deactivated. "
+            "Always the same message, so it does not reveal which emails exist.",
+        }
+    ),
+)
 def login(body: LoginIn, request: Request, response: Response, db: Session = Depends(get_db)):
     user = db.scalar(select(User).where(User.email == body.email.strip().lower()))
 
@@ -42,7 +57,12 @@ def login(body: LoginIn, request: Request, response: Response, db: Session = Dep
     return user
 
 
-@router.post("/logout", status_code=204)
+@router.post(
+    "/logout",
+    status_code=204,
+    summary="Log out",
+    description="**Public.** Clears the session cookie. Works even if the session has already expired.",
+)
 def logout() -> Response:
     # No auth needed: clearing a cookie is harmless, and it must work with an expired token too.
     response = Response(status_code=204)
@@ -50,6 +70,12 @@ def logout() -> Response:
     return response
 
 
-@router.get("/me", response_model=UserOut)
+@router.get(
+    "/me",
+    response_model=UserOut,
+    summary="Who am I",
+    description="**Roles:** any logged-in user. Returns the current user, read fresh from the database.",
+    responses=error_responses({401: NOT_LOGGED_IN}),
+)
 def me(user: User = Depends(get_current_user)):
     return user

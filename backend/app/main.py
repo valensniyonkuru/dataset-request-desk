@@ -47,7 +47,18 @@ async def log_requests(request: Request, call_next):
         )
 
 
-@app.get("/health")
+@app.get(
+    "/health",
+    tags=["health"],
+    summary="Health check",
+    description="**Public.** Returns `ok` when the API is up and can run a query on the database.",
+    responses={
+        503: {
+            "description": "The database is unreachable.",
+            "content": {"application/json": {"example": {"status": "unavailable"}}},
+        }
+    },
+)
 def health(db: Session = Depends(get_db)):
     """Liveness and database check. Returns 503 if the database is unreachable."""
     try:

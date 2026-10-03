@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.api_docs import NOT_LOGGED_IN, error_responses
 from app.auth import require_roles
 from app.db import get_db
 from app.models import User
@@ -14,12 +15,31 @@ from app.security import hash_password
 router = APIRouter(prefix="/users", tags=["users"])
 
 
-@router.get("", response_model=list[UserAdminOut])
+@router.get(
+    "",
+    response_model=list[UserAdminOut],
+    summary="List users",
+    description="**Roles:** admin. All users, active and deactivated, ordered by id.",
+    responses=error_responses({401: NOT_LOGGED_IN, 403: "Logged in, but not an admin."}),
+)
 def list_users(db: Session = Depends(get_db), _admin: User = Depends(require_roles("admin"))):
     return db.scalars(select(User).order_by(User.id)).all()
 
 
-@router.post("", response_model=UserAdminOut, status_code=201)
+@router.post(
+    "",
+    response_model=UserAdminOut,
+    status_code=201,
+    summary="Create a user",
+    description=(
+        "**Roles:** admin. The email is stored lowercase.\n\n"
+        "**422**: invalid email, unknown role, password under 8 characters, a client without an "
+        "organisation, or an unknown field."
+    ),
+    responses=error_responses(
+        {401: NOT_LOGGED_IN, 403: "Logged in, but not an admin.", 409: "A user with this email already exists."}
+    ),
+)
 def create_user(body: UserCreate, db: Session = Depends(get_db), _admin: User = Depends(require_roles("admin"))):
     user = User(
         email=body.email,
@@ -41,7 +61,26 @@ def create_user(body: UserCreate, db: Session = Depends(get_db), _admin: User = 
     return user
 
 
-@router.patch("/{user_id}", response_model=UserAdminOut)
+@router.patch(
+    "/{user_id}",
+    response_model=UserAdminOut,
+    summary="Update a user",
+    description=(
+        "**Roles:** admin. Partial update: only the fields sent are changed. Set `is_active` to false to "
+        "deactivate a user (there is no delete).\n\n"
+        "**422**: invalid values, `null` for a field other than `organisation`, or a client left without "
+        "an organisation."
+    ),
+    responses=error_responses(
+        {
+            401: NOT_LOGGED_IN,
+            403: "Logged in, but not an admin.",
+            404: "No user with this id.",
+            409: "You cannot demote or deactivate yourself, and the last active admin cannot be "
+            "demoted or deactivated.",
+        }
+    ),
+)
 def update_user(
     user_id: int,
     body: UserUpdate,
