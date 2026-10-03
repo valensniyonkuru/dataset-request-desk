@@ -15,11 +15,13 @@ const QUALITY_LABELS: Record<QualityChoice, string> = {
 
 interface Props {
   request: RequestDetail;
+  // Changes after any assign or unassign on the page, so an unassigned episode shows up again here.
+  episodesVersion: number;
   onAssigned: () => void;
 }
 
 /** Find unassigned episodes and assign a selection of them to the request (operators and admins). */
-export default function AssignmentPicker({ request, onAssigned }: Props) {
+export default function AssignmentPicker({ request, episodesVersion, onAssigned }: Props) {
   const remaining = request.episodes_requested - request.assigned_count;
 
   const [taskDraft, setTaskDraft] = useState(request.task_name);
@@ -43,7 +45,7 @@ export default function AssignmentPicker({ request, onAssigned }: Props) {
         limit: PAGE_SIZE,
         offset,
       }),
-    [filters, offset, version],
+    [filters, offset, version, episodesVersion],
   );
 
   const selectable = (episode: EpisodeListItem) => episode.quality !== "bad";

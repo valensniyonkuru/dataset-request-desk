@@ -93,7 +93,9 @@ export default function RequestDetailPage() {
         onChanged={afterEpisodesChanged}
       />
 
-      {episodesCanChange && <AssignmentPicker request={request} onAssigned={afterEpisodesChanged} />}
+      {episodesCanChange && (
+        <AssignmentPicker request={request} episodesVersion={episodesVersion} onAssigned={afterEpisodesChanged} />
+      )}
     </section>
   );
 }

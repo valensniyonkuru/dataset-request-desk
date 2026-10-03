@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { api, type EpisodeListItem } from "../api";
@@ -29,7 +29,7 @@ function renderPicker() {
     limit: 20,
     offset: 0,
   });
-  render(<AssignmentPicker request={request} onAssigned={vi.fn()} />);
+  render(<AssignmentPicker request={request} episodesVersion={0} onAssigned={vi.fn()} />);
 }
 
 describe("assignment picker", () => {
@@ -76,5 +76,17 @@ describe("assignment picker", () => {
     expect(api.listEpisodes).toHaveBeenCalledWith(
       expect.objectContaining({ task_name: "pick cup", quality: "good", assigned: false }),
     );
+  });
+
+  it("loads the list again after an episode is unassigned elsewhere on the page", async () => {
+    // Found in the browser walkthrough: an unassigned episode did not come back into the picker.
+    const request = requestDetail({ status: "in_progress", episodes_requested: 3, assigned_count: 1 });
+    const listEpisodes = vi.spyOn(api, "listEpisodes").mockResolvedValue({ items: [episode(1)], total: 1, limit: 20, offset: 0 });
+    const { rerender } = render(<AssignmentPicker request={request} episodesVersion={0} onAssigned={vi.fn()} />);
+    await screen.findByLabelText("Select EP-1");
+
+    rerender(<AssignmentPicker request={request} episodesVersion={1} onAssigned={vi.fn()} />);
+
+    await waitFor(() => expect(listEpisodes).toHaveBeenCalledTimes(2));
   });
 });
