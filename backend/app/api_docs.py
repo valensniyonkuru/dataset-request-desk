@@ -44,6 +44,7 @@ TAGS = [
         "name": "imports",
         "description": "Importing the recording system's CSV export of episodes, and the reports of past imports.",
     },
+    {"name": "analytics", "description": "Episodes per day, request fulfilment and top tasks (operators and admins)."},
     {"name": "health", "description": "Liveness and database check, for monitoring."},
 ]
 

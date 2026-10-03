@@ -295,3 +295,66 @@ class ImportRunOut(BaseModel):
     started_at: datetime
     finished_at: datetime | None
     report: ImportReport | None  # null while the import is still running
+
+
+class EpisodesPerDayOut(BaseModel):
+    date: date  # a UTC day
+    robot_id: str
+    count: int
+
+
+class RequestFulfilmentOut(BaseModel):
+    by_status: dict[Status, int]  # all five statuses, zero when none
+    total: int
+    delivered_count: int  # requests in scope delivered at least once
+    median_hours_submitted_to_delivered: float | None  # null when none was delivered
+
+
+class TopTaskOut(BaseModel):
+    task_name: str
+    good_episodes: int
+
+
+class AnalyticsMetaOut(BaseModel):
+    # "from" is a Python keyword, so the fields have other names and are renamed in the JSON.
+    from_date: date = Field(serialization_alias="from")
+    to_date: date = Field(serialization_alias="to")
+    days: int
+    generated_at: datetime
+
+
+class AnalyticsOut(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "episodes_per_day": [
+                        {"date": "2026-09-01", "robot_id": "arm-01", "count": 14},
+                        {"date": "2026-09-01", "robot_id": "mobile-01", "count": 9},
+                        {"date": "2026-09-02", "robot_id": "arm-01", "count": 11},
+                    ],
+                    "requests": {
+                        "by_status": {"submitted": 2, "in_progress": 3, "delivered": 1, "accepted": 4, "rejected": 0},
+                        "total": 10,
+                        "delivered_count": 5,
+                        "median_hours_submitted_to_delivered": 52.5,
+                    },
+                    "top_tasks": [
+                        {"task_name": "pick cup", "good_episodes": 120},
+                        {"task_name": "fold towel", "good_episodes": 97},
+                    ],
+                    "meta": {
+                        "from": "2026-09-01",
+                        "to": "2026-09-30",
+                        "days": 30,
+                        "generated_at": "2026-10-03T09:00:00Z",
+                    },
+                }
+            ]
+        }
+    )
+
+    episodes_per_day: list[EpisodesPerDayOut]
+    requests: RequestFulfilmentOut
+    top_tasks: list[TopTaskOut]
+    meta: AnalyticsMetaOut
