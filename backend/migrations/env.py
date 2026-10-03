@@ -4,16 +4,19 @@ from alembic import context
 from sqlalchemy import create_engine, pool
 
 from app.config import settings
+from app.models import Base
 
 config = context.config
 
 # Set up logging from the [loggers] sections of alembic.ini.
+# disable_existing_loggers=False: when the tests run migrations in-process,
+# this must not silence the app's own loggers.
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
-# No models yet. Later this becomes Base.metadata so autogenerate can compare
+# The models' metadata, so `alembic check` and autogenerate can compare
 # the models against the database.
-target_metadata = None
+target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
