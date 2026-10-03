@@ -32,7 +32,9 @@ EPISODE_COLUMNS = (
     summary="List episodes",
     description=(
         "**Roles:** operator, admin. Filter by `task_name`, `quality`, `robot_id` (exact matches) and "
-        "`assigned` (true: only assigned, false: only unassigned). Newest recording first. "
+        "`assigned` (true: only assigned, false: only unassigned). `quality` can be given more than once "
+        "for any of several values, e.g. `quality=good&quality=usable` for everything that can be assigned; "
+        "without it, every quality is listed. Newest recording first. "
         "`total` counts every matching episode, not just this page.\n\n"
         "**422**: unknown `quality`, `assigned` not true/false, `limit` outside 1 to 200, or a negative `offset`."
     ),
@@ -40,7 +42,15 @@ EPISODE_COLUMNS = (
 )
 def list_episodes(
     task_name: str | None = None,
-    quality: Quality | None = None,
+    # A list, so the parameter can be repeated: ?quality=good&quality=usable.
+    quality: list[Quality] = Query(
+        default=[],
+        description="Repeat for several qualities. Leave out for all.",
+        openapi_examples={
+            "good or usable": {"summary": "Everything that can be assigned", "value": ["good", "usable"]},
+            "only good": {"summary": "One quality", "value": ["good"]},
+        },
+    ),
     robot_id: str | None = None,
     assigned: bool | None = None,
     limit: int = Query(50, ge=1, le=200),
@@ -54,8 +64,8 @@ def list_episodes(
     )
     if task_name is not None:
         query = query.where(Episode.task_name == task_name)
-    if quality is not None:
-        query = query.where(Episode.quality == quality)
+    if quality:  # an empty list means no filter
+        query = query.where(Episode.quality.in_(quality))
     if robot_id is not None:
         query = query.where(Episode.robot_id == robot_id)
     if assigned is True:
