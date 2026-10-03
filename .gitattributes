@@ -1,0 +1,6 @@
+# Store text files with LF line endings in the repository.
+* text=auto
+
+# Shell scripts run inside Linux containers, so they must stay LF
+# even on a Windows checkout (CRLF breaks the shebang line).
+*.sh text eol=lf
