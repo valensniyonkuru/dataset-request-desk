@@ -1,0 +1,98 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# Never run two deploys at once. A newer push waits for the running one.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+env:
+  BACKEND_IMAGE: ghcr.io/valensniyonkuru/dataset-request-desk-backend
+  FRONTEND_IMAGE: ghcr.io/valensniyonkuru/dataset-request-desk-frontend
+
+jobs:
+  tests:
+    uses: ./.github/workflows/ci.yml
+
+  build-and-push:
+    needs: tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write # push images to ghcr.io with GITHUB_TOKEN
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Two tags: "latest", and the commit SHA so any version can be redeployed.
+      - name: Build and push backend
+        uses: docker/build-push-action@v7
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ${{ env.BACKEND_IMAGE }}:latest
+            ${{ env.BACKEND_IMAGE }}:${{ github.sha }}
+
+      - name: Build and push frontend
+        uses: docker/build-push-action@v7
+        with:
+          context: ./frontend
+          push: true
+          tags: |
+            ${{ env.FRONTEND_IMAGE }}:latest
+            ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    # Secrets go through env vars, not straight into the scripts, so they are
+    # never pasted into a shell command line.
+    env:
+      SERVER_HOST: ${{ secrets.SERVER_HOST }}
+      SERVER_USER: ${{ secrets.SERVER_USER }}
+      SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up SSH key and known host
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SERVER_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$SERVER_HOST" >> ~/.ssh/known_hosts
+
+      - name: Copy compose file to the server
+        run: |
+          scp -i ~/.ssh/deploy_key deploy/docker-compose.prod.yml \
+            "$SERVER_USER@$SERVER_HOST:/opt/dataset-request-desk/docker-compose.prod.yml"
+
+      # Deploy the exact images built above (tagged with this commit's SHA).
+      # Only touches the "desk" compose project; nothing else on the server.
+      - name: Pull images and restart the stack
+        run: |
+          ssh -i ~/.ssh/deploy_key "$SERVER_USER@$SERVER_HOST" \
+            "cd /opt/dataset-request-desk \
+            && export IMAGE_TAG=$GITHUB_SHA \
+            && docker compose -f docker-compose.prod.yml pull \
+            && docker compose -f docker-compose.prod.yml up -d"
+
+      # The containers need a few seconds to start and run migrations,
+      # so retry for about a minute before failing the job.
+      - name: Check the public health endpoint
+        run: |
+          curl --fail --silent --show-error \
+            --retry 12 --retry-delay 5 --retry-all-errors \
+            https://desk-api.code-stack.tech/health
