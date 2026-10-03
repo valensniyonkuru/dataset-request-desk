@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     DATABASE_URL: str
     SECRET_KEY: str
     ENV: str = "development"
+    # Folder holding users.json. The backend image copies the repo's seed/ here.
+    SEED_DIR: str = "/app/seed"
 
 
 settings = Settings()
