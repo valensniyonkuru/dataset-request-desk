@@ -20,6 +20,13 @@ On start, the api container applies the database migrations and creates the
 seed users below (`RUN_SEED=1`). Re-running is safe: existing users are updated,
 not duplicated.
 
+Import the seed episodes (safe to run again; the rules are in
+[docs/import-rules.md](docs/import-rules.md)). Operators can also upload a CSV with `POST /imports`.
+
+```sh
+docker compose exec api python -m app.import_csv /app/seed/episodes.csv
+```
+
 ## Seed accounts
 
 From [seed/users.json](seed/users.json). Passwords are stored only as Argon2 hashes.
