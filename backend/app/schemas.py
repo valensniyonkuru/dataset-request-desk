@@ -25,7 +25,11 @@ class ErrorOut(BaseModel):
 
 
 class LoginIn(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        # A documented demo account (see README), so "Try it out" in /docs works as is.
+        json_schema_extra={"examples": [{"email": "admin@example.com", "password": "admin123"}]},
+    )
 
     # No email format check here: any wrong input simply gets the generic 401.
     email: str = Field(max_length=254)
@@ -50,7 +54,20 @@ class UserAdminOut(UserOut):
 
 
 class UserCreate(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "examples": [
+                {
+                    "email": "new.client@example.com",
+                    "name": "Gamma Robotics",
+                    "role": "client",
+                    "organisation": "Gamma Robotics",
+                    "password": "choose-a-long-password",
+                }
+            ]
+        },
+    )
 
     email: str = Field(max_length=254, pattern=EMAIL_PATTERN)
     name: str = Field(min_length=1, max_length=200)
@@ -92,7 +109,19 @@ class UserUpdate(BaseModel):
 
 
 class RequestCreate(BaseModel):
-    model_config = ConfigDict(extra="forbid")  # e.g. a client_id in the body is rejected
+    model_config = ConfigDict(
+        extra="forbid",  # e.g. a client_id in the body is rejected
+        json_schema_extra={
+            "examples": [
+                {
+                    "task_name": "pick cup",
+                    "episodes_requested": 200,
+                    "deadline": "2030-01-31",
+                    "notes": "Robot arm, white cups on a table",
+                }
+            ]
+        },
+    )
 
     task_name: str = Field(min_length=1, max_length=100)
     # strict: only a JSON integer; "5", 5.0 and true are rejected.
@@ -116,7 +145,7 @@ class RequestCreate(BaseModel):
 
 
 class TransitionIn(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", json_schema_extra={"examples": [{"to_status": "in_progress"}]})
 
     to_status: Status
 
