@@ -17,6 +17,8 @@ env:
   FRONTEND_IMAGE: ghcr.io/valensniyonkuru/dataset-request-desk-frontend
 
 jobs:
+  # Every job in ci.yml (backend tests and the frontend checks and build) must
+  # pass: a called workflow only succeeds when all its jobs do.
   tests:
     uses: ./.github/workflows/ci.yml
 
